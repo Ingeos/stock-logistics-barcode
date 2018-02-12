@@ -2,6 +2,7 @@
 # © 2011 Sylvain Garancher <sylvain.garancher@syleam.fr>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
+import json
 import logging
 import random
 import time
@@ -172,6 +173,61 @@ class ScannerHardware(models.Model):
         default='red',
         help='Color for the error background.')
 
+    @property
+    @api.multi
+    def json_tmp_val1(self):
+        self.ensure_one()
+        return json.loads(self.tmp_val1 or 'null')
+
+    @json_tmp_val1.setter
+    def json_tmp_val1(self, value):
+        self.ensure_one()
+        self.tmp_val1 = json.dumps(value)
+
+    @property
+    @api.multi
+    def json_tmp_val2(self):
+        self.ensure_one()
+        return json.loads(self.tmp_val2 or 'null')
+
+    @json_tmp_val2.setter
+    def json_tmp_val2(self, value):
+        self.ensure_one()
+        self.tmp_val2 = json.dumps(value)
+
+    @property
+    @api.multi
+    def json_tmp_val3(self):
+        self.ensure_one()
+        return json.loads(self.tmp_val3 or 'null')
+
+    @json_tmp_val3.setter
+    def json_tmp_val3(self, value):
+        self.ensure_one()
+        self.tmp_val3 = json.dumps(value)
+
+    @property
+    @api.multi
+    def json_tmp_val4(self):
+        self.ensure_one()
+        return json.loads(self.tmp_val4 or 'null')
+
+    @json_tmp_val4.setter
+    def json_tmp_val4(self, value):
+        self.ensure_one()
+        self.tmp_val4 = json.dumps(value)
+
+    @property
+    @api.multi
+    def json_tmp_val5(self):
+        self.ensure_one()
+        return json.loads(self.tmp_val5 or 'null')
+
+    @json_tmp_val5.setter
+    def json_tmp_val5(self, value):
+        self.ensure_one()
+        self.tmp_val5 = json.dumps(value)
+
     @api.model
     def timeout_session(self):
         timeout_delay = self.env['ir.config_parameter'].get_param(
@@ -247,7 +303,7 @@ class ScannerHardware(models.Model):
                     transition_type,
                     scenario_id=self.scenario_id.id,
                     step_id=self.step_id.id,
-                    current_object=self.reference_document)
+                )
             # We asked for a scan transition type, but no action is running,
             # forbidden
             elif transition_type == 'scanner':
@@ -263,8 +319,6 @@ class ScannerHardware(models.Model):
                     ('warehouse_ids', '=', False),
                     ('warehouse_ids', 'in', [self.warehouse_id.id]),
                 ])
-                if message == -1:
-                    scenario_ids = [False]
                 if scenario_ids:
                     scenarios = self._scenario_list(
                         parent_id=scenario_ids.id)
@@ -282,7 +336,7 @@ class ScannerHardware(models.Model):
                     'restart',
                     scenario_id=self.scenario_id.id,
                     step_id=self.step_id.id,
-                    current_object=self.reference_document)
+                )
 
         # Reload previous step
         elif action == 'back':
@@ -293,7 +347,7 @@ class ScannerHardware(models.Model):
                     'back',
                     scenario_id=self.scenario_id.id,
                     step_id=self.step_id.id,
-                    current_object=self.reference_document)
+                )
 
         # End required
         elif action == 'end':
@@ -407,14 +461,11 @@ class ScannerHardware(models.Model):
             'scenario_id': scenario_id,
             'step_id': step_id,
         }
-        if obj is not None and isinstance(obj, int):
-            args['reference_document'] = obj
-
         self.write(args)
 
     @api.multi
     def _do_scenario_save(self, message, transition_type, scenario_id=None,
-                          step_id=None, current_object=''):
+                          step_id=None):
         """
         Save the scenario on this terminal and execute the current step
         Return the action to the terminal
@@ -431,7 +482,7 @@ class ScannerHardware(models.Model):
                 terminal.scenario_id.id):
             if terminal.step_id.no_back:
                 step_id = terminal.step_id.id
-            elif terminal.step_history_ids:
+            else:
                 last_call = terminal.step_history_ids[-1]
 
                 # Retrieve last values
@@ -448,25 +499,20 @@ class ScannerHardware(models.Model):
                     return self._do_scenario_save(
                         message, transition_type,
                         scenario_id=scenario_id, step_id=step_id,
-                        current_object=current_object)
-            else:
-                scenario_id = False
-                message = terminal.scenario_id.name
+                    )
 
         # No scenario in arguments, start a new one
         if not self.scenario_id.id:
             # Retrieve the terminal's warehouse
             terminal_warehouse_ids = terminal.warehouse_id.id
             # Retrieve the warehouse's scenarios
-            scenario_ids = []
-            if terminal_warehouse_ids:
-                scenario_ids = scanner_scenario_obj.search([
-                    ('name', '=', message),
-                    ('type', '=', 'scenario'),
-                    '|',
-                    ('warehouse_ids', '=', False),
-                    ('warehouse_ids', 'in', [terminal_warehouse_ids]),
-                ])
+            scenario_ids = scanner_scenario_obj.search([
+                ('name', '=', message),
+                ('type', '=', 'scenario'),
+                '|',
+                ('warehouse_ids', '=', False),
+                ('warehouse_ids', 'in', [terminal_warehouse_ids]),
+            ])
 
             # If at least one scenario was found, pick the start step of the
             # first
@@ -555,10 +601,7 @@ class ScannerHardware(models.Model):
                     [_('Please contact'), _('your'), _('administrator')])
 
         # Memorize the current step
-        terminal._memorize(
-            scenario_id,
-            step_id,
-            obj=current_object)
+        terminal._memorize(scenario_id, step_id)
 
         # Execute the step
         step = terminal.step_id
@@ -600,7 +643,7 @@ class ScannerHardware(models.Model):
 
     @api.multi
     def _scenario_save(self, message, transition_type, scenario_id=None,
-                       step_id=None, current_object=None):
+                       step_id=None):
         """
         Save the scenario on this terminal, handling transient errors by
         retrying the same step
@@ -609,7 +652,6 @@ class ScannerHardware(models.Model):
         self.ensure_one()
         result = ('M', ['TEST'], False)
         tries = 0
-        current_object = current_object or ''
         while True:
             try:
                 result = self._do_scenario_save(
@@ -617,7 +659,7 @@ class ScannerHardware(models.Model):
                     transition_type,
                     scenario_id=scenario_id,
                     step_id=step_id,
-                    current_object=current_object)
+                )
                 break
             except OperationalError as e:
                 # Automatically retry the typical transaction serialization

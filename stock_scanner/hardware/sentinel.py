@@ -23,6 +23,8 @@ I18N_DIR = '%s/i18n/' % os.path.dirname(os.path.realpath(__file__))
 I18N_DOMAIN = 'sentinel'
 I18N_DEFAULT = 'en_US'
 
+NULL_CHAR = '\0'
+
 
 # _ will be initialized by gettext.install but declared to prevent pep8 issues
 _ = None
@@ -634,8 +636,11 @@ class Sentinel(object):
             self._display(clear=True)
 
             # Display the current value if echoing is needed
-            display_value = ''.join(
-                [curses.ascii.unctrl(char) for char in value])
+            display_value = ''.join([
+                curses.ascii.unctrl(char)
+                for char in value
+                if char != NULL_CHAR
+            ])
             display_start = max(0, len(display_value) - self.window_width + 1)
             display_value = display_value[display_start:]
             self._display(' ' * (self.window_width - 1), 0, line)
@@ -647,7 +652,15 @@ class Sentinel(object):
                 title=title)
 
             # Printable character : store in value
-            if len(key) == 1 and (curses.ascii.isprint(key) or ord(key) < 32):
+            add_key = (
+                len(key) == 1 and
+                key != NULL_CHAR and
+                (
+                    curses.ascii.isprint(key) or
+                    ord(key) < 32
+                )
+            )
+            if add_key:
                 value += key
             # Backspace or del, remove the last character
             elif key == 'KEY_BACKSPACE' or key == 'KEY_DC':
@@ -793,7 +806,7 @@ class Sentinel(object):
                 # First line to be displayed
                 first_line = 0
                 nb_lines = self.window_height - 1
-                middle = int(math.floor((nb_lines - 1) / 2))
+                middle = int(math.floor(nb_lines / 2))
 
                 # Change the first line if there is too much lines for the
                 # screen
@@ -828,8 +841,9 @@ class Sentinel(object):
         # First line to be displayed
         first_line = 0
         nb_lines = self.window_height - 1
+        if len(entries) > nb_lines:
+            nb_lines -= 1
         middle = int(math.floor((nb_lines - 1) / 2))
-
         # Change the first line if there is too much lines for the screen
         if len(entries) > nb_lines and highlighted >= middle:
             first_line = min(highlighted - middle, len(entries) - nb_lines)
@@ -848,16 +862,16 @@ class Sentinel(object):
             self.screen.addch(0, self.window_width - 1, curses.ACS_UARROW)
         if first_line + nb_lines < len(entries):
             self.screen.addch(
-                nb_lines - 1, self.window_width - 1, curses.ACS_DARROW)
+                nb_lines, self.window_width - 1, curses.ACS_DARROW)
 
         # Diplays number of the selected entry
-        self._display(_('Selected : %d') % highlighted, y=nb_lines,
+        self._display(_('Selected : %d') % highlighted, y=self.window_height-1,
                       color='info', modifier=curses.A_BOLD)
 
         # Set the cursor position
         if nb_lines < len(entries):
             position_percent = float(highlighted) / len(entries)
-            position = int(round((nb_lines - 1) * position_percent))
+            position = int(round(nb_lines * position_percent))
             self._display(
                 ' ', x=self.window_width - 1, y=position, color='info',
                 modifier=curses.A_REVERSE)
