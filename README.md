@@ -25,14 +25,14 @@ Available addons
 addon | version | summary
 --- | --- | ---
 [barcodes_ean14](barcodes_ean14/) | 10.0.1.0.0 | It provides an EAN14 barcode nomenclature.
-[barcodes_generator_abstract](barcodes_generator_abstract/) | 10.0.1.0.2 | Generate Barcodes for Any Models
+[barcodes_generator_abstract](barcodes_generator_abstract/) | 10.0.1.0.3 | Generate Barcodes for Any Models
 [barcodes_generator_location](barcodes_generator_location/) | 10.0.1.0.0 | Generate Barcodes for Stock Locations
 [barcodes_generator_lot](barcodes_generator_lot/) | 10.0.1.0.0 | Generate Barcodes for Stock Production Lots
 [barcodes_generator_package](barcodes_generator_package/) | 10.0.1.0.0 | Generate Barcodes for Product Packaging
 [barcodes_generator_partner](barcodes_generator_partner/) | 10.0.1.0.0 | Generate Barcodes for Partners
 [barcodes_generator_picking](barcodes_generator_picking/) | 10.0.1.0.0 | Generate Barcodes for Stock Pickings
 [barcodes_generator_product](barcodes_generator_product/) | 10.0.1.0.0 | Generate Barcodes for Products (Templates and Variants)
-[stock_scanner](stock_scanner/) | 10.0.1.0.3 | Allows managing barcode readers with simple scenarios
+[stock_scanner](stock_scanner/) | 10.0.1.1.0 | Allows managing barcode readers with simple scenarios
 
 
 Unported addons
