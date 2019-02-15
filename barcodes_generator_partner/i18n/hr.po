@@ -47,6 +47,11 @@ msgid "Barcode Rule"
 msgstr "Barkod pravilo"
 
 #. module: barcodes_generator_partner
+#: model:ir.model,name:barcodes_generator_partner.model_res_partner
+msgid "Contact"
+msgstr ""
+
+#. module: barcodes_generator_partner
 #: model:ir.ui.view,arch_db:barcodes_generator_partner.view_res_partner_form
 msgid "Generate Barcode (Using Barcode Rule)"
 msgstr "Generiraj barkod (koristeći pravilo)"
@@ -62,11 +67,9 @@ msgid "Generate Type"
 msgstr "Tip generatora"
 
 #. module: barcodes_generator_partner
-#: model:ir.model,name:barcodes_generator_partner.model_res_partner
-msgid "Partner"
-msgstr "Partner"
-
-#. module: barcodes_generator_partner
 #: model:ir.model,name:barcodes_generator_partner.model_barcode_rule
 msgid "barcode.rule"
 msgstr "barcode.rule"
+
+#~ msgid "Partner"
+#~ msgstr "Partner"

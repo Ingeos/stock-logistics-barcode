@@ -4,7 +4,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 10.0\n"
+"Project-Id-Version: Odoo Server 11.0\n"
 "Report-Msgid-Bugs-To: \n"
 "Last-Translator: <>\n"
 "Language-Team: \n"
@@ -31,6 +31,11 @@ msgid "Barcode Rule"
 msgstr ""
 
 #. module: barcodes_generator_partner
+#: model:ir.model,name:barcodes_generator_partner.model_res_partner
+msgid "Contact"
+msgstr ""
+
+#. module: barcodes_generator_partner
 #: model:ir.ui.view,arch_db:barcodes_generator_partner.view_res_partner_form
 msgid "Generate Barcode (Using Barcode Rule)"
 msgstr ""
@@ -43,11 +48,6 @@ msgstr ""
 #. module: barcodes_generator_partner
 #: model:ir.model.fields,field_description:barcodes_generator_partner.field_res_users_generate_type
 msgid "Generate Type"
-msgstr ""
-
-#. module: barcodes_generator_partner
-#: model:ir.model,name:barcodes_generator_partner.model_res_partner
-msgid "Partner"
 msgstr ""
 
 #. module: barcodes_generator_partner

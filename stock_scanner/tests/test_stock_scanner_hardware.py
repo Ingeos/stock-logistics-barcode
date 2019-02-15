@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2017 SYLEAM Info Services
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
@@ -35,7 +34,7 @@ class TestStockScannerHardware(common.TransactionCase):
         """ Should not write the date when trying to login sith a wrong password
         """
         uid = self.hardware.check_credentials('wrong login', 'wrong password')
-        self.assertEqual([False], uid)
+        self.assertEqual(False, uid)
 
     def test_wrong_login(self):
         """ Should not write the date when trying to login sith a wrong password
@@ -63,7 +62,7 @@ class TestStockScannerHardware(common.TransactionCase):
         self.assertEqual(self.hardware.scenario_id, scenario_step_types)
         scenario_step_introduction = self.env.ref(
             'stock_scanner.scanner_scenario_step_step_types_introduction')
-        self.assertEquals(self.hardware.step_id, scenario_step_introduction)
+        self.assertEqual(self.hardware.step_id, scenario_step_introduction)
 
         # Go to the next step
         scanner_hardware.scanner_call(self.hardware.code, action='action')
@@ -71,7 +70,7 @@ class TestStockScannerHardware(common.TransactionCase):
         # Check new linked step
         scenario_step_message = self.env.ref(
             'stock_scanner.scanner_scenario_step_step_types_message')
-        self.assertEquals(self.hardware.step_id, scenario_step_message)
+        self.assertEqual(self.hardware.step_id, scenario_step_message)
 
         # Define the current step as no_back
         scenario_step_message.no_back = True
@@ -80,7 +79,7 @@ class TestStockScannerHardware(common.TransactionCase):
         scanner_hardware.scanner_call(self.hardware.code, action='back')
 
         # The linked step shouldn't have been changed
-        self.assertEquals(self.hardware.step_id, scenario_step_message)
+        self.assertEqual(self.hardware.step_id, scenario_step_message)
 
     def test_step_back_on_the_first_step(self):
         """ Should restart the first step on back action """
@@ -101,7 +100,7 @@ class TestStockScannerHardware(common.TransactionCase):
         self.assertEqual(self.hardware.scenario_id, scenario_step_types)
         scenario_step_introduction = self.env.ref(
             'stock_scanner.scanner_scenario_step_step_types_introduction')
-        self.assertEquals(self.hardware.step_id, scenario_step_introduction)
+        self.assertEqual(self.hardware.step_id, scenario_step_introduction)
 
         # Call the back action
         scanner_hardware.scanner_call(self.hardware.code, action='back')
@@ -131,7 +130,7 @@ class TestStockScannerHardware(common.TransactionCase):
 
         # The scenario should have been restarted
         self.assertEqual(ret, ('R', [
-            'Please contact', 'your', 'administrator', 'A001',
+            'No start step found on the scenario',
         ], 0))
 
     def test_no_transition(self):
@@ -275,7 +274,7 @@ class TestStockScannerHardware(common.TransactionCase):
         ret = scanner_hardware.scanner_call(
             self.hardware.code, action='action')
         # We should be on the next next step
-        self.assertEquals(ret, ('M', [], 0))
+        self.assertEqual(ret, ('M', [], 0))
 
     def test_log_tracer(self):
         """ Should write a line in the log when the transition has a tracer
@@ -307,38 +306,24 @@ class TestStockScannerHardware(common.TransactionCase):
         ret = scanner_hardware.scanner_call(
             self.hardware.code, action='action')
         # We should be on the next next step
-        self.assertEquals(ret, ('M', [
+        self.assertEqual(ret, ('M', [
             '|Message step',
             '',
             'A step designed to display some information, '
             'without waiting for any user input.',
         ], 0))
 
-    def test_data_serialization(self):
-        """ Check that json properties write the right value in tmp fields """
-        self.hardware.json_tmp_val1 = ''
-        self.assertEqual(self.hardware.tmp_val1, '""')
-        self.hardware.json_tmp_val2 = {'a': 'b', 'c': 'd'}
-        self.assertEqual(self.hardware.tmp_val2, '{"a": "b", "c": "d"}')
-        self.hardware.json_tmp_val3 = range(5)
-        self.assertEqual(self.hardware.tmp_val3, '[0, 1, 2, 3, 4]')
-        self.hardware.json_tmp_val4 = 'text value'
-        self.assertEqual(self.hardware.tmp_val4, '"text value"')
-        self.hardware.json_tmp_val5 = 13.5
-        self.assertEqual(self.hardware.tmp_val5, '13.5')
-
-    def test_data_deserialization(self):
-        """ Check that json properties write the right value in tmp fields """
-        self.hardware.tmp_val1 = '""'
-        self.assertEqual(self.hardware.json_tmp_val1, '')
-        self.hardware.tmp_val2 = '{"a": "b", "c": "d"}'
-        self.assertEqual(self.hardware.json_tmp_val2, {'a': 'b', 'c': 'd'})
-        self.hardware.tmp_val3 = '[0, 1, 2, 3, 4]'
-        self.assertEqual(self.hardware.json_tmp_val3, range(5))
-        self.hardware.tmp_val4 = '"text value"'
-        self.assertEqual(self.hardware.json_tmp_val4, 'text value')
-        self.hardware.tmp_val5 = '13.5'
-        self.assertEqual(self.hardware.json_tmp_val5, 13.5)
+    def test_legacy_shortcuts(self):
+        self.assertEqual(self.hardware.json_tmp_val1, None)
+        self.hardware.json_tmp_val2 = {'a': 'b', 'c': [1, 2, 3.5]}
+        self.assertEqual(
+            self.hardware.json_tmp_val2,
+            {'a': 'b', 'c': [1, 2, 3.5]}
+        )
+        self.assertEqual(
+            self.hardware.tmp_values,
+            {'val2': {'a': 'b', 'c': [1, 2, 3.5]}}
+        )
 
     def test_read_unitialized_json_value(self):
         """ Reading an uninitialized json value should return None """
@@ -353,7 +338,7 @@ class TestStockScannerHardware(common.TransactionCase):
         self.assertEqual(hardware.get_tmp_value('tmp_float'), 13.5)
 
         tmp_val_1 = 'test 1'
-        tmp_val_2 = range(5)
+        tmp_val_2 = list(range(5))
         hardware.update_tmp_values({
             'tmp_val_1': 'test 1',
             'tmp_val_2': tmp_val_2,
@@ -365,7 +350,7 @@ class TestStockScannerHardware(common.TransactionCase):
         hardware = self.hardware
 
         tmp_val_1 = 'test 1'
-        tmp_val_2 = range(5)
+        tmp_val_2 = list(range(5))
 
         hardware.set_tmp_value('tmp_dict', {
             'extra_1': tmp_val_1,

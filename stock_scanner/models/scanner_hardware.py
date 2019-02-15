@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 # © 2011 Sylvain Garancher <sylvain.garancher@syleam.fr>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
-import json
 import logging
 import random
 import time
@@ -11,9 +9,8 @@ import datetime
 from psycopg2 import OperationalError, errorcodes
 
 from odoo import models, api, fields, exceptions
-from odoo import workflow
 from odoo import _
-from odoo.tools.misc import ustr
+from odoo.tools.misc import ustr, html_escape
 from odoo.tools.safe_eval import safe_eval
 
 
@@ -116,26 +113,6 @@ class ScannerHardware(models.Model):
         required=False,
         readonly=True,
         help='ID of the reference document.')
-    tmp_val1 = fields.Char(
-        string='Temp value 1',
-        readonly=True,
-        help='Temporary value.')
-    tmp_val2 = fields.Char(
-        string='Temp value 2',
-        readonly=True,
-        help='Temporary value.')
-    tmp_val3 = fields.Char(
-        string='Temp value 3',
-        readonly=True,
-        help='Temporary value.')
-    tmp_val4 = fields.Char(
-        string='Temp value 4',
-        readonly=True,
-        help='Temporary value.')
-    tmp_val5 = fields.Char(
-        string='Temp value 5',
-        readonly=True,
-        help='Temporary value.')
     base_fg_color = fields.Selection(
         selection='_colors_get',
         string='Base - Text Color',
@@ -175,61 +152,86 @@ class ScannerHardware(models.Model):
     tmp_values = fields.Serialized(
         readonly=True
     )
+    tmp_values_display = fields.Html(
+        compute='_compute_tmp_values_display',
+        help="Debug tmp values",
+    )
 
+    @api.depends('tmp_values')
+    def _compute_tmp_values_display(self):
+        for rec in self:
+            txt = [
+                '<table><tr>',
+                '<th>' + html_escape(_('Key')) + '</th>',
+                '<th>' + html_escape(_('Value')) + '</th></tr>',
+            ]
+            for key in sorted(rec.tmp_values.keys()):
+                val = rec.tmp_values[key]
+                txt.append(
+                    '<tr><td>%s</td><td>%s</td></tr>' %
+                    (html_escape(key), html_escape(val))
+                )
+            txt.append('</table>')
+            rec.tmp_values_display = ''.join(txt)
+
+    # The json_tmp_valN properties are kept as a compatibility layer to
+    # help scenario migration. You should use the tmp_values field
+    # instead. These will be removed when the module is migrated to
+    # Odoo 12.0
     @property
     @api.multi
     def json_tmp_val1(self):
         self.ensure_one()
-        return json.loads(self.tmp_val1 or 'null')
+        return self.get_tmp_value('val1')
 
     @json_tmp_val1.setter
     def json_tmp_val1(self, value):
         self.ensure_one()
-        self.tmp_val1 = json.dumps(value)
+        self.update_tmp_values({'val1': value})
 
     @property
     @api.multi
     def json_tmp_val2(self):
         self.ensure_one()
-        return json.loads(self.tmp_val2 or 'null')
+        return self.get_tmp_value('val2')
 
     @json_tmp_val2.setter
     def json_tmp_val2(self, value):
         self.ensure_one()
-        self.tmp_val2 = json.dumps(value)
+        self.update_tmp_values({'val2': value})
 
     @property
     @api.multi
     def json_tmp_val3(self):
         self.ensure_one()
-        return json.loads(self.tmp_val3 or 'null')
+        return self.get_tmp_value('val3')
 
     @json_tmp_val3.setter
     def json_tmp_val3(self, value):
         self.ensure_one()
-        self.tmp_val3 = json.dumps(value)
+        self.update_tmp_values({'val3': value})
 
     @property
     @api.multi
     def json_tmp_val4(self):
         self.ensure_one()
-        return json.loads(self.tmp_val4 or 'null')
+        return self.get_tmp_value('val4')
 
     @json_tmp_val4.setter
     def json_tmp_val4(self, value):
         self.ensure_one()
-        self.tmp_val4 = json.dumps(value)
+        self.update_tmp_values({'val4'})
 
     @property
     @api.multi
     def json_tmp_val5(self):
         self.ensure_one()
-        return json.loads(self.tmp_val5 or 'null')
+        return self.get_tmp_value('val5')
 
     @json_tmp_val5.setter
     def json_tmp_val5(self, value):
         self.ensure_one()
-        self.tmp_val5 = json.dumps(value)
+        self.update_tmp_values({'val5': value})
 
     @api.multi
     def update_tmp_values(self, values):
@@ -300,7 +302,6 @@ class ScannerHardware(models.Model):
         return terminal.sudo(uid)._scanner_call(
             action, message=message, transition_type=transition_type)
 
-    @api.multi
     def _scanner_call(self, action, message=False,
                       transition_type='keyboard'):
         self.ensure_one()
@@ -315,17 +316,14 @@ class ScannerHardware(models.Model):
         if action == 'screen_colors':
             logger.debug('Retrieve screen colors')
             screen_colors = {
-                'base': (
-                    self.base_fg_color, self.base_bg_color),
-                'info': (
-                    self.info_fg_color, self.info_bg_color),
-                'error': (
-                    self.error_fg_color, self.error_bg_color), }
+                'base': (self.base_fg_color, self.base_bg_color),
+                'info': (self.info_fg_color, self.info_bg_color),
+                'error': (self.error_fg_color, self.error_bg_color),
+            }
             return ('M', screen_colors, 0)
 
         # Execute the action
         elif action == 'action':
-
             # The terminal is attached to a scenario
             if self.scenario_id:
                 return self._scenario_save(
@@ -395,9 +393,8 @@ class ScannerHardware(models.Model):
             return ('L', scenarios, 0)
 
         # Nothing matched, return an error
-        return self._send_error(['Unknown', 'action'])
+        return self._send_error(['Unknown action'])
 
-    @api.multi
     def _send_error(self, message):
         """
         Sends an error message
@@ -406,15 +403,13 @@ class ScannerHardware(models.Model):
         self.sudo().empty_scanner_values()
         return ('R', message, 0)
 
-    @api.multi
+    @api.model
     def _unknown_action(self, message):
         """
         Sends an unknown action message
         """
-        self.ensure_one()
         return ('U', message, 0)
 
-    @api.one
     def empty_scanner_values(self):
         """
         This method empty all temporary values, scenario, step and
@@ -422,10 +417,6 @@ class ScannerHardware(models.Model):
         Because if we want reset term when error we must use sql query,
         it is bad in production
         """
-        scenario_custom_obj = self.env['scanner.scenario.custom']
-        if self.scenario_id:
-            scenario_custom_obj._remove_values(self.scenario_id, self)
-
         self.write({
             'scenario_id': False,
             'step_id': False,
@@ -433,11 +424,6 @@ class ScannerHardware(models.Model):
                 (2, history.id) for history in self.step_history_ids
             ],
             'reference_document': 0,
-            'tmp_val1': '',
-            'tmp_val2': '',
-            'tmp_val3': '',
-            'tmp_val4': '',
-            'tmp_val5': '',
             'tmp_values': {},
         })
         return True
@@ -449,20 +435,17 @@ class ScannerHardware(models.Model):
         """
         return self.scanner_call(terminal_number=numterm, action='end')
 
-    @api.one
+    @api.model
     def check_credentials(self, login, password):
         res_users = self.env['res.users']
         try:
-            uid = False
-            users = res_users.search([('login', '=', login)])
-            if len(users) == 1:
-                uid = users[0].id
-                res_users.sudo(uid).check_credentials(password)
-            return uid
+            user = res_users.search([('login', '=', login)])
+            if user:
+                res_users.sudo(user).check_credentials(password)
+            return user.id
         except exceptions.AccessDenied:
             return False
 
-    @api.one
     def login(self, login, password):
         """This method assign the uid associated to login
         as current user of the hardware.
@@ -470,31 +453,32 @@ class ScannerHardware(models.Model):
         scenario will no more be visible by the current user once it will
         be assigned this one
         """
-        uid = self.check_credentials(login, password)[0]
+        self.ensure_one()
+        uid = self.check_credentials(login, password)
         if uid:
-            self.write({'user_id': uid,
-                        'last_call_dt': fields.Datetime.now()})
+            self.write({
+                'user_id': uid,
+                'last_call_dt': fields.Datetime.now(),
+            })
 
-    @api.multi
     def logout(self):
-        self.write({'user_id': False,
-                    'last_call_dt': False})
+        self.write({
+            'user_id': False,
+            'last_call_dt': False,
+        })
         return True
 
-    @api.multi
     def _memorize(self, scenario_id, step_id, obj=None):
         """
         After affect a scenario to a scanner, we must memorize it
         If obj is specify, save it as well (ex: res.partner,12)
         """
         self.ensure_one()
-        args = {
+        self.write({
             'scenario_id': scenario_id,
             'step_id': step_id,
-        }
-        self.write(args)
+        })
 
-    @api.multi
     def _do_scenario_save(self, message, transition_type, scenario_id=None,
                           step_id=None):
         """
@@ -535,14 +519,14 @@ class ScannerHardware(models.Model):
         # No scenario in arguments, start a new one
         if not self.scenario_id.id:
             # Retrieve the terminal's warehouse
-            terminal_warehouse_ids = terminal.warehouse_id.id
+            terminal_warehouse_ids = terminal.warehouse_id.ids
             # Retrieve the warehouse's scenarios
             scenario_ids = scanner_scenario_obj.search([
                 ('name', '=', message),
                 ('type', '=', 'scenario'),
                 '|',
                 ('warehouse_ids', '=', False),
-                ('warehouse_ids', 'in', [terminal_warehouse_ids]),
+                ('warehouse_ids', 'in', terminal_warehouse_ids),
             ])
 
             # If at least one scenario was found, pick the start step of the
@@ -556,11 +540,9 @@ class ScannerHardware(models.Model):
 
                 # No start step found on the scenario, return an error
                 if not step_ids:
-                    return self._send_error(
-                        [_('Please contact'),
-                         _('your'),
-                         _('administrator'),
-                         _('A001')])
+                    return self._send_error([
+                        _('No start step found on the scenario'),
+                    ])
 
                 step_id = step_ids[0].id
                 # Store the first step in terminal history
@@ -571,7 +553,7 @@ class ScannerHardware(models.Model):
                 })
 
             else:
-                return self._send_error([_('Scenario'), _('not found')])
+                return self._send_error([_('Scenario not found')])
 
         elif transition_type not in ('back', 'none', 'restart'):
             # Retrieve outgoing transitions from the current step
@@ -584,7 +566,7 @@ class ScannerHardware(models.Model):
                 ctx = {
                     'context': self.env.context,
                     'model': self.env[
-                        transition.from_id.scenario_id.model_id.model],
+                        transition.from_id.scenario_id.model_id.sudo().model],
                     'cr': self.env.cr,
                     'pool': self.pool,
                     'env': self.env,
@@ -628,8 +610,11 @@ class ScannerHardware(models.Model):
             # No step found, return an error
             if not step_id:
                 terminal.log('No valid transition found !')
-                return self._unknown_action(
-                    [_('Please contact'), _('your'), _('administrator')])
+                return self._unknown_action([
+                    _('Please contact'),
+                    _('your'),
+                    _('administrator'),
+                ])
 
         # Memorize the current step
         terminal._memorize(scenario_id, step_id)
@@ -642,8 +627,7 @@ class ScannerHardware(models.Model):
             'uid': self.env.uid,
             'pool': self.pool,
             'env': self.env,
-            'model': self.env[step.scenario_id.model_id.model],
-            'custom': self.env['scanner.scenario.custom'],
+            'model': self.env[step.scenario_id.model_id.sudo().model],
             'term': self,
             'context': self.env.context,
             'm': message,
@@ -651,8 +635,6 @@ class ScannerHardware(models.Model):
             't': terminal,
             'terminal': terminal,
             'tracer': tracer,
-            'wkf': workflow,
-            'workflow': workflow,
             'scenario': terminal.scenario_id,
             '_': _,
         }
@@ -662,17 +644,16 @@ class ScannerHardware(models.Model):
         if tracer:
             terminal.log('Tracer : %s' % repr(tracer))
 
-        exec step.python_code in ld
+        exec(step.python_code, ld)
         if step.step_stop:
             terminal.empty_scanner_values()
 
         return (
-            ld.get(
-                'act', 'M'), ld.get(
-                'res', ['nothing']), ld.get(
-                'val', 0))
+            ld.get('act', 'M'),
+            ld.get('res', ['nothing']),
+            ld.get('val', 0),
+        )
 
-    @api.multi
     def _scenario_save(self, message, transition_type, scenario_id=None,
                        step_id=None):
         """
@@ -701,9 +682,9 @@ class ScannerHardware(models.Model):
                         "[%s] OperationalError",
                         self.code,
                         exc_info=True)
-                    result = (
-                        'R', [
-                            'Please contact', 'your', 'administrator'], 0)
+                    result = ('R', [
+                        'Please contact', 'your', 'administrator',
+                    ], 0)
                     break
                 if tries >= MAX_TRIES_ON_CONCURRENCY_FAILURE:
                     logger.warning(
@@ -711,11 +692,11 @@ class ScannerHardware(models.Model):
                         "OperationalError %s, maximum number of tries reached",
                         self.code,
                         e.pgcode)
-                    result = (
-                        'E', [
-                            ustr('Concurrent transaction - OperationalError '
-                                 '%s, maximum number of tries reached') %
-                            (e.pgcode)], True)
+                    result = ('E', [
+                        ustr('Concurrent transaction - OperationalError '
+                             '%s, maximum number of tries reached') %
+                        (e.pgcode),
+                    ], True)
                     break
                 wait_time = random.uniform(0.0, 2 ** tries)
                 tries += 1
@@ -728,7 +709,7 @@ class ScannerHardware(models.Model):
                     MAX_TRIES_ON_CONCURRENCY_FAILURE,
                     wait_time)
                 time.sleep(wait_time)
-            except (exceptions.except_orm, exceptions.Warning) as e:
+            except (exceptions.except_orm, exceptions.UserError) as e:
                 # ORM exception, display the error message and require the "go
                 # back" action
                 self.env.cr.rollback()
@@ -755,15 +736,17 @@ class ScannerHardware(models.Model):
         Retrieve the scenario list for this warehouse
         """
         scanner_scenario_obj = self.env['scanner.scenario']
-        scanner_scenario_ids = scanner_scenario_obj.search(
-            ['|',
-             ('warehouse_ids', '=', False),
-             ('warehouse_ids', 'in', [self.warehouse_id.id]),
-             ('parent_id', '=', parent_id),
-             '|',
-             ('child_ids', 'not in', []),
-             ('step_ids', 'not in', [])
-             ])
+        scanner_scenario_ids = scanner_scenario_obj.search([
+            '|',
+            ('warehouse_ids', '=', False),
+            ('warehouse_ids', 'in', [self.warehouse_id.id]),
+
+            ('parent_id', '=', parent_id),
+            '|',
+            ('child_ids', '!=', False),
+            ('step_ids', '!=', False)
+        ])
+
         return scanner_scenario_ids.mapped('name')
 
     @api.multi
